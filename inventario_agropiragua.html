@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario Agropiragua</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome (for icons) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        .btn-primary {
+            background-color: #10b981; /* Emerald 500 */
+            border: none;
+        }
+        .btn-primary:hover {
+            background-color: #059669; /* Emerald 600 */
+        }
+        /* Custom scrollbar for inventory list */
+        .inventory-list::-webkit-scrollbar {
+            width: 8px;
+        }
+        .inventory-list::-webkit-scrollbar-thumb {
+            background-color: #d1d5db; /* Gray 300 */
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app" class="min-h-screen p-4 sm:p-8 bg-gray-50">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-green-700 tracking-tight">
+                <i class="fas fa-paw text-yellow-500 mr-2"></i> Agropiragua
+            </h1>
+            <p class="text-lg text-gray-600 mt-1">Sistema de Gestión de Inventario en Tiempo Real</p>
+            <div id="auth-status" class="mt-2 text-sm text-gray-500">Cargando autenticación...</div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- Columna Izquierda: Movimientos (Entrada/Salida) -->
+            <div class="lg:col-span-1 space-y-6">
+
+                <!-- Título y Estado -->
+                <div class="card bg-white p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-truck-ramp-box mr-2 text-green-600"></i> Registrar Movimiento
+                    </h2>
+
+                    <!-- Pestañas de Movimiento -->
+                    <div class="flex mb-4 border-b border-gray-200">
+                        <!-- CORRECCIÓN: Se eliminó el 'onclick' para manejar el evento con addEventListener en el módulo JS -->
+                        <button id="tab-entrada" class="flex-1 py-2 text-sm font-medium border-b-2 transition-colors duration-200 text-green-600 border-green-600">
+                            <i class="fas fa-plus mr-1"></i> Entrada
+                        </button>
+                        <!-- CORRECCIÓN: Se eliminó el 'onclick' para manejar el evento con addEventListener en el módulo JS -->
+                        <button id="tab-salida" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-green-600 hover:border-green-300">
+                            <i class="fas fa-minus mr-1"></i> Salida
+                        </button>
+                    </div>
+
+                    <!-- Formulario de Movimiento -->
+                    <form id="movement-form" class="space-y-4">
+                        <input type="hidden" id="movement-type" value="entrada">
+
+                        <div>
+                            <label for="provider-select" class="block text-sm font-medium text-gray-700">Proveedor</label>
+                            <select id="provider-select" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border">
+                                <!-- Opciones cargadas por JS -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="product-select" class="block text-sm font-medium text-gray-700">Producto (Referencia)</label>
+                            <select id="product-select" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border">
+                                <!-- Opciones cargadas por JS -->
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="quantity-input" class="block text-sm font-medium text-gray-700">Cantidad</label>
+                            <input type="number" id="quantity-input" required min="1" value="1" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border">
+                        </div>
+
+                        <button type="submit" id="submit-button" class="w-full py-2 px-4 rounded-lg text-white font-semibold transition duration-150 btn-primary flex items-center justify-center">
+                            <i class="fas fa-check mr-2"></i> Registrar Entrada
+                        </button>
+                    </form>
+
+                    <!-- Mensaje de estado -->
+                    <div id="message-box" class="mt-4 p-3 rounded-lg text-sm hidden"></div>
+                </div>
+
+                <!-- Tarjeta de Info de Usuario -->
+                <div class="card bg-blue-100 p-4 rounded-xl text-blue-800 border border-blue-300">
+                    <h3 class="font-bold text-lg mb-1 flex items-center">
+                        <i class="fas fa-user-shield mr-2"></i> ID de Sesión (Importante)
+                    </h3>
+                    <p class="text-xs break-all" id="user-id-display">Cargando...</p>
+                </div>
+
+            </div>
+
+            <!-- Columna Derecha: Inventario en Tiempo Real -->
+            <div class="lg:col-span-2">
+                <div class="card bg-white p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+                        <i class="fas fa-warehouse mr-2 text-teal-600"></i> Inventario General
+                        <span id="total-products" class="ml-auto text-xl font-extrabold text-teal-600">0</span>
+                    </h2>
+
+                    <!-- Filtros de Inventario -->
+                    <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                        <div class="flex-1">
+                            <label for="filter-provider" class="block text-xs font-medium text-gray-500 uppercase">Filtrar por Proveedor</label>
+                            <select id="filter-provider" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-2 border text-sm">
+                                <option value="">Todos los Proveedores</option>
+                                <!-- Opciones cargadas por JS -->
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label for="filter-product" class="block text-xs font-medium text-gray-500 uppercase">Buscar Producto</label>
+                            <input type="text" id="filter-product" placeholder="Escribe para buscar..." class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-2 border text-sm">
+                        </div>
+                    </div>
+
+                    <!-- Lista de Inventario (Tabla Responsive) -->
+                    <div class="overflow-x-auto">
+                        <div id="inventory-list" class="inventory-list max-h-96 overflow-y-auto">
+                            <!-- Placeholder de carga -->
+                            <div id="loading-inventory" class="text-center p-8 text-gray-500">
+                                <i class="fas fa-spinner fa-spin text-2xl"></i> Cargando inventario...
+                            </div>
+                            
+                            <!-- Headers de la tabla (solo visible en desktop) -->
+                            <div id="table-headers" class="hidden sm:grid grid-cols-12 gap-4 py-2 px-4 text-xs font-semibold uppercase text-gray-500 bg-gray-100 rounded-t-lg sticky top-0 z-10 border-b border-gray-200">
+                                <div class="col-span-4">Producto</div>
+                                <div class="col-span-2">Proveedor</div>
+                                <div class="col-span-3">Presentación</div>
+                                <div class="col-span-3 text-right">Stock Actual</div>
+                            </div>
+                            
+                            <div id="inventory-items" class="divide-y divide-gray-200">
+                                <!-- Los ítems del inventario se insertarán aquí por JS -->
+                            </div>
+                            <div id="no-results" class="hidden text-center p-8 text-gray-500">
+                                No se encontraron productos con estos filtros.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, collection, query, setDoc, runTransaction, getDocs, where, limit, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuración de Firebase (variables globales proporcionadas por el entorno)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+        
+        // Inicializar Firebase
+        let app, db, auth, userId;
+        
+        // --- DATA INICIAL (Estructura de Productos) ---
+        const PRODUCTS_DATA = [
+            // ITALCOL (Agility Gold, Chunky, Italcan)
+            { id: 'AG-PC-1.5', name: 'AGILITY GOLD PEQUEÑOS CACHORROS', provider: 'ITALCOL', presentation: '1.5 KG' },
+            { id: 'AG-GA-3', name: 'AGILITY GOLD GRANDES ADULTOS', provider: 'ITALCOL', presentation: '3 KG' },
+            { id: 'CH-CP-2', name: 'CHUNKY CACHORROS POLLO', provider: 'ITALCOL', presentation: '2 KG' },
+            { id: 'CH-AS-8', name: 'CHUNKY ADULTO SALMÓN Y CORDERO', provider: 'ITALCOL', presentation: '8 KG' },
+            { id: 'IT-PRR-40', name: 'ITALCAN PLUS POLLO Y ARROZ', provider: 'ITALCOL', presentation: '40 KG' },
+            
+            // PURINA (Pro Plan, Dog Chow, Cat Chow)
+            { id: 'PP-SAS-7.5', name: 'PRO PLAN ADULTO MEDIANO SALMON', provider: 'PURINA', presentation: '7.5 KG' },
+            { id: 'PP-KS-1', name: 'PRO PLAN GATO ESTERILIZADO', provider: 'PURINA', presentation: '1 KG' },
+            { id: 'DC-TPA-22.7', name: 'DOG CHOW TRIPLE PROTEIN ADULTOS', provider: 'PURINA', presentation: '22.7 KG' },
+            { id: 'CC-AC-15', name: 'CAT CHOW ADULTOS CARNE', provider: 'PURINA', presentation: '15 KG' },
+            { id: 'PP-VET-GI-2', name: 'PRO PLAN VETERINARY GASTROINTESTINAL', provider: 'PURINA', presentation: '2 KG' },
+
+            // ALIMENTOS LA POLAR (Super Can, Dogourmet)
+            { id: 'SP-AE-15', name: 'SUPER CAN ADULTO ECONÓMICO', provider: 'ALIMENTOS LA POLAR', presentation: '15 KG' },
+            { id: 'DG-CP-1', name: 'DOGOURMET CACHORROS POLLO', provider: 'ALIMENTOS LA POLAR', presentation: '1 KG' },
+            { id: 'SP-MA-25', name: 'SUPER CAN MAX ADULTOS', provider: 'ALIMENTOS LA POLAR', presentation: '25 KG' },
+        ];
+
+        // --- REFERENCIAS DE DOM ---
+        const DOMElements = {
+            authStatus: document.getElementById('auth-status'),
+            userIdDisplay: document.getElementById('user-id-display'),
+            providerSelect: document.getElementById('provider-select'),
+            productSelect: document.getElementById('product-select'),
+            filterProvider: document.getElementById('filter-provider'),
+            filterProduct: document.getElementById('filter-product'),
+            quantityInput: document.getElementById('quantity-input'),
+            movementForm: document.getElementById('movement-form'),
+            movementTypeInput: document.getElementById('movement-type'),
+            submitButton: document.getElementById('submit-button'),
+            messageBox: document.getElementById('message-box'),
+            inventoryItems: document.getElementById('inventory-items'),
+            loadingInventory: document.getElementById('loading-inventory'),
+            noResults: document.getElementById('no-results'),
+            tabEntrada: document.getElementById('tab-entrada'),
+            tabSalida: document.getElementById('tab-salida'),
+            totalProducts: document.getElementById('total-products'),
+            tableHeaders: document.getElementById('table-headers'),
+        };
+
+        let currentInventory = [];
+        let isAuthReady = false;
+
+        // --- FUNCIONES DE UTILIDAD ---
+
+        // Función para el retry con backoff exponencial
+        const withExponentialBackoff = async (fn, maxRetries = 5, delay = 1000) => {
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    return await fn();
+                } catch (error) {
+                    if (i === maxRetries - 1) throw error; // Re-lanzar en el último intento
+                    await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+                }
+            }
+        };
+
+        // Función para obtener la ruta de la colección de inventario público
+        function getInventoryCollectionRef() {
+            // Colección pública: /artifacts/{appId}/public/data/inventory
+            return collection(db, 'artifacts', appId, 'public', 'data', 'inventory');
+        }
+
+        // --- FIREBASE INICIALIZACIÓN Y AUTENTICACIÓN ---
+
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Habilitar logs para depuración de Firestore
+                setLogLevel('error'); // Usamos 'error' para no saturar la consola, pero podemos cambiar a 'debug' si es necesario.
+
+                // 1. Manejar autenticación
+                DOMElements.authStatus.textContent = 'Autenticando...';
+                let authPromise;
+                if (initialAuthToken) {
+                    authPromise = withExponentialBackoff(() => signInWithCustomToken(auth, initialAuthToken));
+                } else {
+                    authPromise = withExponentialBackoff(() => signInAnonymously(auth));
+                }
+                await authPromise;
+
+                // 2. Esperar que el estado de autenticación se resuelva
+                return new Promise(resolve => {
+                    const unsubscribe = onAuthStateChanged(auth, (user) => {
+                        if (user) {
+                            userId = user.uid;
+                            DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-green-500 text-xs mr-1"></i> Sesión activa`;
+                            DOMElements.userIdDisplay.textContent = userId;
+                            isAuthReady = true;
+                            unsubscribe();
+                            resolve();
+                        } else {
+                            // Esto solo debería ocurrir si signInAnonymously falla
+                            DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-red-500 text-xs mr-1"></i> Error de sesión`;
+                            userId = crypto.randomUUID(); // Fallback para userId si la autenticación falla por completo (poco probable)
+                            DOMElements.userIdDisplay.textContent = `ANÓNIMO FALLBACK: ${userId}`;
+                            isAuthReady = true;
+                            unsubscribe();
+                            resolve();
+                        }
+                    });
+                });
+            } catch (error) {
+                console.error("Error al inicializar Firebase o autenticar:", error);
+                DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-red-500 text-xs mr-1"></i> Error fatal: ${error.code}`;
+                isAuthReady = true; // Permite que las demás funciones sigan si es posible
+            }
+        }
+        
+        // --- GESTIÓN DE PRODUCTOS Y UI ---
+
+        // Función para poblar la base de datos con los productos iniciales
+        async function seedDatabase() {
+            if (!isAuthReady || !db) return;
+
+            const collectionRef = getInventoryCollectionRef();
+
+            try {
+                const q = query(collectionRef, limit(1)); // Intenta obtener solo 1 documento para chequear si hay datos
+                const snapshot = await withExponentialBackoff(() => getDocs(q));
+
+                if (snapshot.empty) {
+                    console.log("Base de datos vacía. Sembrando datos iniciales...");
+                    const batch = writeBatch(db);
+
+                    for (const product of PRODUCTS_DATA) {
+                        const docRef = doc(collectionRef, product.id);
+                        batch.set(docRef, {
+                            ...product,
+                            stock: 0, // Inicializar stock en 0
+                            lastUpdated: new Date().toISOString(),
+                        });
+                    }
+                    await withExponentialBackoff(() => batch.commit());
+                    console.log("Datos iniciales sembrados con éxito.");
+                } else {
+                    console.log("Inventario ya contiene datos. Omitiendo siembra inicial.");
+                }
+            } catch (error) {
+                console.error("Error al sembrar la base de datos:", error);
+            }
+        }
+
+        // Poblar los <select> del formulario y filtros
+        function populateSelectors() {
+            const providers = [...new Set(PRODUCTS_DATA.map(p => p.provider))].sort();
+
+            // Populate Form Provider Select
+            providers.forEach(provider => {
+                const option = document.createElement('option');
+                option.value = provider;
+                option.textContent = provider;
+                DOMElements.providerSelect.appendChild(option);
+            });
+
+            // Populate Filter Provider Select
+            providers.forEach(provider => {
+                const option = document.createElement('option');
+                option.value = provider;
+                option.textContent = provider;
+                DOMElements.filterProvider.appendChild(option);
+            });
+            
+            // Populate Product Select (Form)
+            updateProductSelector(PRODUCTS_DATA[0].provider);
+            
+            // Set listeners for dynamic product list
+            DOMElements.providerSelect.addEventListener('change', (e) => {
+                updateProductSelector(e.target.value);
+            });
+        }
+
+        // Actualizar el selector de productos basado en el proveedor seleccionado
+        function updateProductSelector(selectedProvider) {
+            const filteredProducts = PRODUCTS_DATA.filter(p => p.provider === selectedProvider);
+            DOMElements.productSelect.innerHTML = '';
+            
+            if (filteredProducts.length === 0) {
+                const option = document.createElement('option');
+                option.textContent = 'No hay productos para este proveedor';
+                DOMElements.productSelect.appendChild(option);
+                DOMElements.productSelect.disabled = true;
+                return;
+            }
+
+            DOMElements.productSelect.disabled = false;
+            filteredProducts.forEach(product => {
+                const option = document.createElement('option');
+                option.value = product.id;
+                option.textContent = `${product.name} (${product.presentation}) - Ref: ${product.id}`;
+                DOMElements.productSelect.appendChild(option);
+            });
+        }
+
+        // --- GESTIÓN DE MOVIMIENTOS (TRANSACCIONES) ---
+
+        // Función principal para registrar la Entrada o Salida
+        async function registerMovement(e) {
+            e.preventDefault();
+            
+            if (!isAuthReady || !db) {
+                showMessage('Error: El sistema no está autenticado.', 'error');
+                return;
+            }
+
+            const productId = DOMElements.productSelect.value;
+            const movementType = DOMElements.movementTypeInput.value;
+            let quantity = parseInt(DOMElements.quantityInput.value, 10);
+            
+            if (!productId || isNaN(quantity) || quantity <= 0) {
+                showMessage('Error: Selecciona un producto e ingresa una cantidad válida.', 'error');
+                return;
+            }
+
+            // Deshabilitar botón para evitar doble click
+            DOMElements.submitButton.disabled = true;
+            DOMElements.submitButton.textContent = 'Procesando...';
+            
+            const docRef = doc(getInventoryCollectionRef(), productId);
+            const isEntry = movementType === 'entrada';
+
+            try {
+                // Ejecutar Transacción
+                await runTransaction(db, async (transaction) => {
+                    const docSnapshot = await transaction.get(docRef);
+                    const currentStock = docSnapshot.exists() ? docSnapshot.data().stock : 0;
+                    
+                    let newStock;
+                    if (isEntry) {
+                        newStock = currentStock + quantity;
+                    } else {
+                        // Salida
+                        if (currentStock < quantity) {
+                            // Lanzar error para abortar la transacción y capturarlo afuera
+                            throw new Error(`INSUFFICIENT_STOCK: Solo hay ${currentStock} unidades de ${productId} en stock.`);
+                        }
+                        newStock = currentStock - quantity;
+                    }
+
+                    // Actualizar el documento de inventario
+                    transaction.update(docRef, {
+                        stock: newStock,
+                        lastUpdated: new Date().toISOString(),
+                        lastMovementType: movementType,
+                        lastMovementQty: quantity,
+                        // El resto de los datos del producto (name, provider, presentation) se mantienen del seed.
+                    });
+
+                    // Opcional: Registrar el movimiento en una colección de historial (omito para simplicidad, pero se haría aquí)
+                    
+                    return { newStock };
+
+                });
+
+                // Transacción exitosa
+                showMessage(`¡${isEntry ? 'Entrada' : 'Salida'} de ${quantity} registrada con éxito!`, 'success');
+                DOMElements.quantityInput.value = '1';
+
+            } catch (error) {
+                let errorMessage = 'Error al procesar el movimiento.';
+                if (error.message.includes('INSUFFICIENT_STOCK')) {
+                    errorMessage = error.message.replace('INSUFFICIENT_STOCK: ', 'Error de Stock: ');
+                } else {
+                    console.error("Error en la transacción:", error);
+                }
+                showMessage(errorMessage, 'error');
+
+            } finally {
+                // Volver a habilitar el botón
+                DOMElements.submitButton.disabled = false;
+                DOMElements.submitButton.innerHTML = `<i class="fas fa-check mr-2"></i> Registrar ${isEntry ? 'Entrada' : 'Salida'}`;
+            }
+        }
+
+        // --- GESTIÓN DE INVENTARIO EN TIEMPO REAL (onSnapshot) ---
+
+        function setupRealtimeInventory() {
+            if (!isAuthReady || !db) return;
+            
+            const inventoryQuery = query(getInventoryCollectionRef());
+
+            DOMElements.loadingInventory.classList.remove('hidden');
+
+            // Suscribirse a cambios en tiempo real
+            onSnapshot(inventoryQuery, (snapshot) => {
+                DOMElements.loadingInventory.classList.add('hidden');
+                
+                let updatedInventory = [];
+                snapshot.forEach(doc => {
+                    updatedInventory.push({ id: doc.id, ...doc.data() });
+                });
+                
+                currentInventory = updatedInventory.sort((a, b) => 
+                    a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name)
+                );
+
+                renderInventoryList();
+            }, (error) => {
+                console.error("Error al escuchar el inventario en tiempo real:", error);
+                DOMElements.inventoryItems.innerHTML = `<div class="p-4 text-red-600">Error al cargar datos: ${error.message}</div>`;
+            });
+        }
+        
+        // --- RENDERIZADO DE INVENTARIO Y FILTROS ---
+
+        function renderInventoryList() {
+            const filterProvider = DOMElements.filterProvider.value;
+            const filterText = DOMElements.filterProduct.value.toLowerCase();
+            
+            // Aplicar filtros
+            const filteredInventory = currentInventory.filter(item => {
+                const providerMatch = !filterProvider || item.provider === filterProvider;
+                const textMatch = !filterText || item.name.toLowerCase().includes(filterText) || item.id.toLowerCase().includes(filterText);
+                return providerMatch && textMatch;
+            });
+
+            DOMElements.inventoryItems.innerHTML = '';
+            DOMElements.totalProducts.textContent = filteredInventory.length;
+            
+            // Asegurarse de que los encabezados de la tabla solo se muestren si hay resultados
+            const hasResults = filteredInventory.length > 0;
+            DOMElements.noResults.classList.toggle('hidden', hasResults);
+            DOMElements.tableHeaders.classList.toggle('hidden', !hasResults);
+
+
+            if (!hasResults) return;
+
+            filteredInventory.forEach(item => {
+                const stockColor = item.stock <= 5 && item.stock > 0 ? 'text-orange-500 font-bold' : (item.stock === 0 ? 'text-red-600 font-bold' : 'text-gray-900');
+                
+                const itemHtml = `
+                    <div class="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-gray-50 transition-colors duration-150 rounded-lg sm:rounded-none">
+                        <!-- Producto (Visible en Móvil y Desktop) -->
+                        <div class="col-span-12 sm:col-span-4 flex flex-col">
+                            <span class="font-medium text-gray-800">${item.name}</span>
+                            <span class="text-xs text-gray-400">Ref: ${item.id}</span>
+                        </div>
+
+                        <!-- Proveedor (Visible en Móvil y Desktop) -->
+                        <div class="col-span-6 sm:col-span-2 text-sm text-gray-600 sm:self-center">
+                            <span class="sm:hidden font-semibold text-gray-500 mr-2">Proveedor: </span>${item.provider}
+                        </div>
+                        
+                        <!-- Presentación (Visible en Móvil y Desktop) -->
+                        <div class="col-span-6 sm:col-span-3 text-sm text-gray-600 sm:self-center">
+                            <span class="sm:hidden font-semibold text-gray-500 mr-2">Presentación: </span>${item.presentation}
+                        </div>
+
+                        <!-- Stock Actual (Visible en Móvil y Desktop) -->
+                        <div class="col-span-12 sm:col-span-3 text-right text-lg sm:text-base font-extrabold ${stockColor} mt-2 sm:mt-0 sm:self-center">
+                            <span class="sm:hidden font-semibold text-gray-500 mr-2">Stock: </span>${item.stock} unidades
+                        </div>
+                    </div>
+                `;
+                DOMElements.inventoryItems.insertAdjacentHTML('beforeend', itemHtml);
+            });
+        }
+        
+        // --- GESTIÓN DE UI / ESTADO ---
+
+        function showMessage(text, type) {
+            DOMElements.messageBox.textContent = text;
+            DOMElements.messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
+            
+            if (type === 'error') {
+                DOMElements.messageBox.classList.add('bg-red-100', 'text-red-800');
+            } else if (type === 'success') {
+                DOMElements.messageBox.classList.add('bg-green-100', 'text-green-800');
+            }
+            
+            // Ocultar después de 5 segundos
+            setTimeout(() => {
+                DOMElements.messageBox.classList.add('hidden');
+            }, 5000);
+        }
+
+        function showMovementForm(type) {
+            const isEntry = type === 'entrada';
+            
+            // Actualizar estado interno
+            DOMElements.movementTypeInput.value = type;
+
+            // Actualizar pestañas
+            DOMElements.tabEntrada.classList.toggle('border-green-600', isEntry);
+            DOMElements.tabEntrada.classList.toggle('border-transparent', !isEntry);
+            DOMElements.tabEntrada.classList.toggle('text-green-600', isEntry);
+            DOMElements.tabEntrada.classList.toggle('text-gray-500', !isEntry);
+            DOMElements.tabEntrada.classList.toggle('hover:border-green-300', !isEntry);
+            
+            DOMElements.tabSalida.classList.toggle('border-green-600', !isEntry);
+            DOMElements.tabSalida.classList.toggle('border-transparent', isEntry);
+            DOMElements.tabSalida.classList.toggle('text-green-600', !isEntry);
+            DOMElements.tabSalida.classList.toggle('text-gray-500', isEntry);
+            DOMElements.tabSalida.classList.toggle('hover:border-green-300', isEntry);
+
+            // Actualizar botón de envío
+            DOMElements.submitButton.innerHTML = `<i class="fas fa-${isEntry ? 'plus' : 'minus'} mr-2"></i> Registrar ${isEntry ? 'Entrada' : 'Salida'}`;
+            DOMElements.submitButton.classList.toggle('btn-primary', isEntry);
+            DOMElements.submitButton.classList.toggle('bg-red-500', !isEntry);
+            DOMElements.submitButton.classList.toggle('hover:bg-red-700', !isEntry);
+            DOMElements.submitButton.classList.toggle('bg-green-600', isEntry);
+            DOMElements.submitButton.classList.toggle('hover:bg-green-700', isEntry);
+        }
+
+        // --- INICIALIZACIÓN PRINCIPAL ---
+        
+        window.onload = async function() {
+            // 1. Inicializar Firebase y Autenticar
+            await initializeFirebase();
+            
+            // 2. Sembrar la base de datos si está vacía
+            await seedDatabase();
+
+            // 3. Poblar los selectores de la UI
+            populateSelectors();
+
+            // 4. Configurar listeners de la base de datos en tiempo real (onSnapshot)
+            setupRealtimeInventory();
+
+            // 5. Configurar listeners de la UI
+            DOMElements.movementForm.addEventListener('submit', registerMovement);
+            DOMElements.filterProvider.addEventListener('change', renderInventoryList);
+            DOMElements.filterProduct.addEventListener('input', renderInventoryList);
+            
+            // CORRECCIÓN: Se añaden los listeners para las pestañas de movimiento
+            DOMElements.tabEntrada.addEventListener('click', () => showMovementForm('entrada'));
+            DOMElements.tabSalida.addEventListener('click', () => showMovementForm('salida'));
+            
+            // Inicializar estado de las pestañas
+            showMovementForm('entrada');
+        };
+
+    </script>
+</body>
+</html>
