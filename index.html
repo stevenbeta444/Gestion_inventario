@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario Agropiragua</title>
+    <title>Inventario Agropiragua (Local)</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter Font -->
@@ -51,7 +51,7 @@
         <!-- Header -->
         <header class="text-center mb-8 flex flex-col sm:flex-row justify-between items-center">
             <h1 class="text-3xl sm:text-5xl font-extrabold text-green-700 dark:text-green-400 tracking-tight flex items-center mb-4 sm:mb-0">
-                <i class="fas fa-paw text-yellow-500 mr-2"></i> Agropiragua
+                <i class="fas fa-paw text-yellow-500 mr-2"></i> Agropiragua (Sistema Local)
             </h1>
             
             <div class="flex items-center space-x-4">
@@ -59,9 +59,6 @@
                 <button id="dark-mode-toggle" class="p-2 rounded-full text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-300 shadow-md">
                     <i id="theme-icon" class="fas fa-sun w-5 h-5"></i>
                 </button>
-                
-                <!-- Estado de Autenticación -->
-                <div id="auth-status" class="mt-0 text-sm text-gray-500 dark:text-gray-400">Cargando autenticación...</div>
             </div>
         </header>
 
@@ -121,15 +118,6 @@
                     <!-- Mensaje de estado -->
                     <div id="message-box" class="mt-4 p-3 rounded-lg text-sm hidden"></div>
                 </div>
-
-                <!-- Tarjeta de Info de Usuario -->
-                <div class="card bg-blue-100 dark:bg-blue-900 p-4 rounded-xl text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700">
-                    <h3 class="font-bold text-lg mb-1 flex items-center">
-                        <i class="fas fa-user-shield mr-2"></i> ID de Sesión (Importante)
-                    </h3>
-                    <p class="text-xs break-all" id="user-id-display">Cargando...</p>
-                </div>
-
             </div>
 
             <!-- Columna Derecha: Inventario en Tiempo Real -->
@@ -160,11 +148,6 @@
                     <!-- Lista de Inventario (Tabla Responsive) -->
                     <div class="overflow-x-auto">
                         <div id="inventory-list" class="inventory-list max-h-96 overflow-y-auto">
-                            <!-- Placeholder de carga -->
-                            <div id="loading-inventory" class="text-center p-8 text-gray-500 dark:text-gray-400">
-                                <i class="fas fa-spinner fa-spin text-2xl"></i> Cargando inventario...
-                            </div>
-                            
                             <!-- Headers de la tabla (solo visible en desktop) -->
                             <div id="table-headers" class="hidden sm:grid grid-cols-12 gap-4 py-2 px-4 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 rounded-t-lg sticky top-0 z-10 border-b border-gray-200 dark:border-gray-600">
                                 <div class="col-span-4">Producto</div>
@@ -187,50 +170,37 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, query, runTransaction, getDocs, limit, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Configuración de Firebase (variables globales proporcionadas por el entorno)
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-        
-        // Inicializar Firebase
-        let app, db, auth, userId;
+    <script>
+        // --- CONSTANTES ---
+        const LOCAL_STORAGE_KEY = 'agropiragua_inventory_local';
         
         // --- DATA INICIAL (Estructura de Productos) ---
         const PRODUCTS_DATA = [
             // ITALCOL (Agility Gold, Chunky, Italcan)
-            { id: 'AG-PC-1.5', name: 'AGILITY GOLD PEQUEÑOS CACHORROS', provider: 'ITALCOL', presentation: '1.5 KG' },
-            { id: 'AG-GA-3', name: 'AGILITY GOLD GRANDES ADULTOS', provider: 'ITALCOL', presentation: '3 KG' },
-            { id: 'CH-CP-2', name: 'CHUNKY CACHORROS POLLO', provider: 'ITALCOL', presentation: '2 KG' },
-            { id: 'CH-AS-8', name: 'CHUNKY ADULTO SALMÓN Y CORDERO', provider: 'ITALCOL', presentation: '8 KG' },
-            { id: 'IT-PRR-40', name: 'ITALCAN PLUS POLLO Y ARROZ', provider: 'ITALCOL', presentation: '40 KG' },
+            { id: 'AG-PC-1.5', name: 'AGILITY GOLD PEQUEÑOS CACHORROS', provider: 'ITALCOL', presentation: '1.5 KG', stock: 0 },
+            { id: 'AG-GA-3', name: 'AGILITY GOLD GRANDES ADULTOS', provider: 'ITALCOL', presentation: '3 KG', stock: 0 },
+            { id: 'CH-CP-2', name: 'CHUNKY CACHORROS POLLO', provider: 'ITALCOL', presentation: '2 KG', stock: 0 },
+            { id: 'CH-AS-8', name: 'CHUNKY ADULTO SALMÓN Y CORDERO', provider: 'ITALCOL', presentation: '8 KG', stock: 0 },
+            { id: 'IT-PRR-40', name: 'ITALCAN PLUS POLLO Y ARROZ', provider: 'ITALCOL', presentation: '40 KG', stock: 0 },
             
             // PURINA (Pro Plan, Dog Chow, Cat Chow)
-            { id: 'PP-SAS-7.5', name: 'PRO PLAN ADULTO MEDIANO SALMON', provider: 'PURINA', presentation: '7.5 KG' },
-            { id: 'PP-KS-1', name: 'PRO PLAN GATO ESTERILIZADO', provider: 'PURINA', presentation: '1 KG' },
-            { id: 'DC-TPA-22.7', name: 'DOG CHOW TRIPLE PROTEIN ADULTOS', provider: 'PURINA', presentation: '22.7 KG' },
-            { id: 'CC-AC-15', name: 'CAT CHOW ADULTOS CARNE', provider: 'PURINA', presentation: '15 KG' },
-            { id: 'PP-VET-GI-2', name: 'PRO PLAN VETERINARY GASTROINTESTINAL', provider: 'PURINA', presentation: '2 KG' },
+            { id: 'PP-SAS-7.5', name: 'PRO PLAN ADULTO MEDIANO SALMON', provider: 'PURINA', presentation: '7.5 KG', stock: 0 },
+            { id: 'PP-KS-1', name: 'PRO PLAN GATO ESTERILIZADO', provider: 'PURINA', presentation: '1 KG', stock: 0 },
+            { id: 'DC-TPA-22.7', name: 'DOG CHOW TRIPLE PROTEIN ADULTOS', provider: 'PURINA', presentation: '22.7 KG', stock: 0 },
+            { id: 'CC-AC-15', name: 'CAT CHOW ADULTOS CARNE', provider: 'PURINA', presentation: '15 KG', stock: 0 },
+            { id: 'PP-VET-GI-2', name: 'PRO PLAN VETERINARY GASTROINTESTINAL', provider: 'PURINA', presentation: '2 KG', stock: 0 },
 
             // ALIMENTOS LA POLAR (Super Can, Dogourmet)
-            { id: 'SP-AE-15', name: 'SUPER CAN ADULTO ECONÓMICO', provider: 'ALIMENTOS LA POLAR', presentation: '15 KG' },
-            { id: 'DG-CP-1', name: 'DOGOURMET CACHORROS POLLO', provider: 'ALIMENTOS LA POLAR', presentation: '1 KG' },
-            { id: 'SP-MA-25', name: 'SUPER CAN MAX ADULTOS', provider: 'ALIMENTOS LA POLAR', presentation: '25 KG' },
-        ];
+            { id: 'SP-AE-15', name: 'SUPER CAN ADULTO ECONÓMICO', provider: 'ALIMENTOS LA POLAR', presentation: '15 KG', stock: 0 },
+            { id: 'DG-CP-1', name: 'DOGOURMET CACHORROS POLLO', provider: 'ALIMENTOS LA POLAR', presentation: '1 KG', stock: 0 },
+            { id: 'SP-MA-25', name: 'SUPER CAN MAX ADULTOS', provider: 'ALIMENTOS LA POLAR', presentation: '25 KG', stock: 0 },
+        ].sort((a, b) => a.name.localeCompare(b.name)); // Ordenar productos al inicio
 
         // --- REFERENCIAS DE DOM ---
         const DOMElements = {
             html: document.documentElement,
             darkModeToggle: document.getElementById('dark-mode-toggle'),
             themeIcon: document.getElementById('theme-icon'),
-            authStatus: document.getElementById('auth-status'),
-            userIdDisplay: document.getElementById('user-id-display'),
             providerSelect: document.getElementById('provider-select'),
             productSelect: document.getElementById('product-select'),
             filterProvider: document.getElementById('filter-provider'),
@@ -241,7 +211,6 @@
             submitButton: document.getElementById('submit-button'),
             messageBox: document.getElementById('message-box'),
             inventoryItems: document.getElementById('inventory-items'),
-            loadingInventory: document.getElementById('loading-inventory'),
             noResults: document.getElementById('no-results'),
             tabEntrada: document.getElementById('tab-entrada'),
             tabSalida: document.getElementById('tab-salida'),
@@ -250,16 +219,14 @@
         };
 
         let currentInventory = [];
-        let isAuthReady = false;
 
         // --- GESTIÓN DEL MODO OSCURO ---
 
         /**
-         * Inicializa el modo oscuro basándose en localStorage o la preferencia del sistema.
+         * Inicializa el modo oscuro basándose en localStorage.
          */
         function initializeDarkMode() {
             const isDark = localStorage.getItem('darkMode') === 'true';
-            
             if (isDark) {
                 DOMElements.html.classList.add('dark');
                 DOMElements.themeIcon.classList.replace('fa-sun', 'fa-moon');
@@ -274,7 +241,6 @@
          */
         function toggleDarkMode() {
             const isCurrentlyDark = DOMElements.html.classList.contains('dark');
-            
             if (isCurrentlyDark) {
                 DOMElements.html.classList.remove('dark');
                 DOMElements.themeIcon.classList.replace('fa-moon', 'fa-sun');
@@ -286,131 +252,66 @@
             }
         }
 
-        // --- FUNCIONES DE UTILIDAD ---
+        // --- GESTIÓN DE LOCAL STORAGE (NUEVA BASE DE DATOS) ---
 
-        // Función para el retry con backoff exponencial
-        const withExponentialBackoff = async (fn, maxRetries = 5, delay = 1000) => {
-            for (let i = 0; i < maxRetries; i++) {
+        /**
+         * Carga el inventario desde localStorage o lo inicializa si no existe.
+         */
+        function initializeInventory() {
+            const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (storedData) {
                 try {
-                    return await fn();
-                } catch (error) {
-                    if (i === maxRetries - 1) throw error; // Re-lanzar en el último intento
-                    await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, i)));
+                    currentInventory = JSON.parse(storedData);
+                } catch (e) {
+                    console.error("Error al parsear el inventario de localStorage. Reestableciendo.", e);
+                    currentInventory = [...PRODUCTS_DATA];
+                    saveInventory();
                 }
+            } else {
+                // Inicializar con los datos por defecto
+                currentInventory = [...PRODUCTS_DATA];
+                saveInventory();
             }
-        };
-
-        // Función para obtener la ruta de la colección de inventario público
-        function getInventoryCollectionRef() {
-            // Colección pública: /artifacts/{appId}/public/data/inventory
-            return collection(db, 'artifacts', appId, 'public', 'data', 'inventory');
+            // Asegurar que siempre se muestre la lista inicial
+            renderInventoryList();
         }
 
-        // --- FIREBASE INICIALIZACIÓN Y AUTENTICACIÓN ---
-
-        async function initializeFirebase() {
+        /**
+         * Guarda el inventario actual en localStorage.
+         */
+        function saveInventory() {
             try {
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Habilitar logs para depuración de Firestore
-                setLogLevel('error');
-
-                // 1. Manejar autenticación
-                DOMElements.authStatus.textContent = 'Autenticando...';
-                let authPromise;
-                if (initialAuthToken) {
-                    authPromise = withExponentialBackoff(() => signInWithCustomToken(auth, initialAuthToken));
-                } else {
-                    authPromise = withExponentialBackoff(() => signInAnonymously(auth));
-                }
-                await authPromise;
-
-                // 2. Esperar que el estado de autenticación se resuelva
-                return new Promise(resolve => {
-                    const unsubscribe = onAuthStateChanged(auth, (user) => {
-                        if (user) {
-                            userId = user.uid;
-                            DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-green-500 dark:text-green-400 text-xs mr-1"></i> Sesión activa`;
-                            DOMElements.userIdDisplay.textContent = userId;
-                            isAuthReady = true;
-                            unsubscribe();
-                            resolve();
-                        } else {
-                            // Esto solo debería ocurrir si signInAnonymously falla
-                            DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-red-500 text-xs mr-1"></i> Error de sesión`;
-                            userId = crypto.randomUUID(); // Fallback
-                            DOMElements.userIdDisplay.textContent = `ANÓNIMO FALLBACK: ${userId}`;
-                            isAuthReady = true;
-                            unsubscribe();
-                            resolve();
-                        }
-                    });
-                });
-            } catch (error) {
-                console.error("Error al inicializar Firebase o autenticar:", error);
-                DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-red-500 text-xs mr-1"></i> Error fatal`;
-                isAuthReady = true;
+                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(currentInventory));
+            } catch (e) {
+                console.error("Error al guardar en localStorage.", e);
+                showMessage('Error crítico: No se pudo guardar el inventario localmente. Tu navegador puede estar lleno.', 'error');
             }
         }
-        
+
         // --- GESTIÓN DE PRODUCTOS Y UI ---
 
-        // Función para poblar la base de datos con los productos iniciales
-        async function seedDatabase() {
-            if (!isAuthReady || !db) return;
-
-            const collectionRef = getInventoryCollectionRef();
-
-            try {
-                const q = query(collectionRef, limit(1));
-                const snapshot = await withExponentialBackoff(() => getDocs(q));
-
-                if (snapshot.empty) {
-                    console.log("Base de datos vacía. Sembrando datos iniciales...");
-                    const batch = writeBatch(db);
-
-                    for (const product of PRODUCTS_DATA) {
-                        const docRef = doc(collectionRef, product.id);
-                        batch.set(docRef, {
-                            ...product,
-                            stock: 0, // Inicializar stock en 0
-                            lastUpdated: new Date().toISOString(),
-                        });
-                    }
-                    await withExponentialBackoff(() => batch.commit());
-                    console.log("Datos iniciales sembrados con éxito.");
-                } else {
-                    console.log("Inventario ya contiene datos. Omitiendo siembra inicial.");
-                }
-            } catch (error) {
-                console.error("Error al sembrar la base de datos:", error);
-            }
-        }
-
-        // Poblar los <select> del formulario y filtros
+        // Función para poblar los <select> del formulario y filtros
         function populateSelectors() {
             const providers = [...new Set(PRODUCTS_DATA.map(p => p.provider))].sort();
 
-            // Populate Form Provider Select
-            providers.forEach(provider => {
-                const option = document.createElement('option');
-                option.value = provider;
-                option.textContent = provider;
-                DOMElements.providerSelect.appendChild(option);
-            });
+            // Poblar Selectores de Proveedor (Formulario y Filtro)
+            const populate = (selectElement) => {
+                selectElement.innerHTML = selectElement === DOMElements.filterProvider ? '<option value="">Todos los Proveedores</option>' : '';
+                providers.forEach(provider => {
+                    const option = document.createElement('option');
+                    option.value = provider;
+                    option.textContent = provider;
+                    selectElement.appendChild(option);
+                });
+            };
 
-            // Populate Filter Provider Select
-            providers.forEach(provider => {
-                const option = document.createElement('option');
-                option.value = provider;
-                option.textContent = provider;
-                DOMElements.filterProvider.appendChild(option);
-            });
+            populate(DOMElements.providerSelect);
+            populate(DOMElements.filterProvider);
             
-            // Populate Product Select (Form)
-            updateProductSelector(PRODUCTS_DATA[0].provider);
+            // Poblar Selector de Productos inicial
+            if (providers.length > 0) {
+                updateProductSelector(providers[0]);
+            }
             
             // Set listeners for dynamic product list
             DOMElements.providerSelect.addEventListener('change', (e) => {
@@ -440,17 +341,14 @@
             });
         }
 
-        // --- GESTIÓN DE MOVIMIENTOS (TRANSACCIONES) ---
+        // --- GESTIÓN DE MOVIMIENTOS ---
 
-        // Función principal para registrar la Entrada o Salida
-        async function registerMovement(e) {
+        /**
+         * Función principal para registrar la Entrada o Salida, actualizando el inventario localmente.
+         */
+        function registerMovement(e) {
             e.preventDefault();
             
-            if (!isAuthReady || !db) {
-                showMessage('Error: El sistema no está autenticado.', 'error');
-                return;
-            }
-
             const productId = DOMElements.productSelect.value;
             const movementType = DOMElements.movementTypeInput.value;
             let quantity = parseInt(DOMElements.quantityInput.value, 10);
@@ -460,87 +358,37 @@
                 return;
             }
 
-            // Deshabilitar botón para evitar doble click
-            DOMElements.submitButton.disabled = true;
-            DOMElements.submitButton.textContent = 'Procesando...';
-            
-            const docRef = doc(getInventoryCollectionRef(), productId);
-            const isEntry = movementType === 'entrada';
-
-            try {
-                // Ejecutar Transacción para asegurar la atomicidad del stock
-                await runTransaction(db, async (transaction) => {
-                    const docSnapshot = await transaction.get(docRef);
-                    const currentStock = docSnapshot.exists() ? docSnapshot.data().stock : 0;
-                    
-                    let newStock;
-                    if (isEntry) {
-                        newStock = currentStock + quantity;
-                    } else {
-                        // Salida
-                        if (currentStock < quantity) {
-                            throw new Error(`INSUFFICIENT_STOCK: Solo hay ${currentStock} unidades de ${productId} en stock.`);
-                        }
-                        newStock = currentStock - quantity;
-                    }
-
-                    // Actualizar el documento de inventario
-                    transaction.update(docRef, {
-                        stock: newStock,
-                        lastUpdated: new Date().toISOString(),
-                        lastMovementType: movementType,
-                        lastMovementQty: quantity,
-                    });
-                });
-
-                // Transacción exitosa
-                showMessage(`¡${isEntry ? 'Entrada' : 'Salida'} de ${quantity} registrada con éxito!`, 'success');
-                DOMElements.quantityInput.value = '1';
-
-            } catch (error) {
-                let errorMessage = 'Error al procesar el movimiento.';
-                if (error.message.includes('INSUFFICIENT_STOCK')) {
-                    errorMessage = error.message.replace('INSUFFICIENT_STOCK: ', 'Error de Stock: ');
-                } else {
-                    console.error("Error en la transacción:", error);
-                }
-                showMessage(errorMessage, 'error');
-
-            } finally {
-                // Volver a habilitar el botón
-                const isEntryFinal = DOMElements.movementTypeInput.value === 'entrada';
-                DOMElements.submitButton.disabled = false;
-                DOMElements.submitButton.innerHTML = `<i class="fas fa-check mr-2"></i> Registrar ${isEntryFinal ? 'Entrada' : 'Salida'}`;
+            const itemIndex = currentInventory.findIndex(item => item.id === productId);
+            if (itemIndex === -1) {
+                showMessage('Error: Producto no encontrado.', 'error');
+                return;
             }
-        }
 
-        // --- GESTIÓN DE INVENTARIO EN TIEMPO REAL (onSnapshot) ---
+            const isEntry = movementType === 'entrada';
+            let newStock;
 
-        function setupRealtimeInventory() {
-            if (!isAuthReady || !db) return;
+            // Lógica de movimiento
+            if (isEntry) {
+                newStock = currentInventory[itemIndex].stock + quantity;
+            } else {
+                // Salida
+                if (currentInventory[itemIndex].stock < quantity) {
+                    showMessage(`Error de Stock: Solo hay ${currentInventory[itemIndex].stock} unidades de ${productId} en stock.`, 'error');
+                    return;
+                }
+                newStock = currentInventory[itemIndex].stock - quantity;
+            }
+
+            // Actualizar inventario en memoria
+            currentInventory[itemIndex].stock = newStock;
             
-            const inventoryQuery = query(getInventoryCollectionRef());
+            // Guardar en LocalStorage y renderizar
+            saveInventory();
+            renderInventoryList();
 
-            DOMElements.loadingInventory.classList.remove('hidden');
-
-            // Suscribirse a cambios en tiempo real
-            onSnapshot(inventoryQuery, (snapshot) => {
-                DOMElements.loadingInventory.classList.add('hidden');
-                
-                let updatedInventory = [];
-                snapshot.forEach(doc => {
-                    updatedInventory.push({ id: doc.id, ...doc.data() });
-                });
-                
-                currentInventory = updatedInventory.sort((a, b) => 
-                    a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name)
-                );
-
-                renderInventoryList();
-            }, (error) => {
-                console.error("Error al escuchar el inventario en tiempo real:", error);
-                DOMElements.inventoryItems.innerHTML = `<div class="p-4 text-red-600 dark:text-red-400">Error al cargar datos: ${error.message}</div>`;
-            });
+            // Mensaje de éxito
+            showMessage(`¡${isEntry ? 'Entrada' : 'Salida'} de ${quantity} registrada con éxito!`, 'success');
+            DOMElements.quantityInput.value = '1';
         }
         
         // --- RENDERIZADO DE INVENTARIO Y FILTROS ---
@@ -554,7 +402,9 @@
                 const providerMatch = !filterProvider || item.provider === filterProvider;
                 const textMatch = !filterText || item.name.toLowerCase().includes(filterText) || item.id.toLowerCase().includes(filterText);
                 return providerMatch && textMatch;
-            });
+            }).sort((a, b) => 
+                a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name)
+            );
 
             DOMElements.inventoryItems.innerHTML = '';
             DOMElements.totalProducts.textContent = filteredInventory.length;
@@ -624,26 +474,26 @@
             // Actualizar estado interno
             DOMElements.movementTypeInput.value = type;
 
-            // Actualizar pestañas
-            DOMElements.tabEntrada.classList.toggle('border-green-600', isEntry);
-            DOMElements.tabEntrada.classList.toggle('dark:border-green-400', isEntry);
-            DOMElements.tabEntrada.classList.toggle('border-transparent', !isEntry);
-            DOMElements.tabEntrada.classList.toggle('text-green-600', isEntry);
-            DOMElements.tabEntrada.classList.toggle('dark:text-green-400', isEntry);
-            DOMElements.tabEntrada.classList.toggle('text-gray-500', !isEntry);
-            DOMElements.tabEntrada.classList.toggle('dark:text-gray-400', !isEntry);
-            DOMElements.tabEntrada.classList.toggle('hover:border-green-300', !isEntry);
-            DOMElements.tabEntrada.classList.toggle('dark:hover:border-green-400', !isEntry);
+            // Actualizar pestañas (clase activa/inactiva)
+            const activeClasses = ['border-green-600', 'dark:border-green-400', 'text-green-600', 'dark:text-green-400'];
+            const inactiveClasses = ['border-transparent', 'text-gray-500', 'dark:text-gray-400'];
+            const hoverClasses = ['hover:border-green-300', 'dark:hover:border-green-400', 'hover:text-green-600', 'dark:hover:text-green-400'];
 
-            DOMElements.tabSalida.classList.toggle('border-green-600', !isEntry);
-            DOMElements.tabSalida.classList.toggle('dark:border-green-400', !isEntry);
-            DOMElements.tabSalida.classList.toggle('border-transparent', isEntry);
-            DOMElements.tabSalida.classList.toggle('text-green-600', !isEntry);
-            DOMElements.tabSalida.classList.toggle('dark:text-green-400', !isEntry);
-            DOMElements.tabSalida.classList.toggle('text-gray-500', isEntry);
-            DOMElements.tabSalida.classList.toggle('dark:text-gray-400', isEntry);
-            DOMElements.tabSalida.classList.toggle('hover:border-green-300', isEntry);
-            DOMElements.tabSalida.classList.toggle('dark:hover:border-green-400', isEntry);
+            DOMElements.tabEntrada.classList.toggle('border-b-2', true); 
+            DOMElements.tabSalida.classList.toggle('border-b-2', true); 
+
+            activeClasses.forEach(cls => {
+                DOMElements.tabEntrada.classList.toggle(cls, isEntry);
+                DOMElements.tabSalida.classList.toggle(cls, !isEntry);
+            });
+            inactiveClasses.forEach(cls => {
+                DOMElements.tabEntrada.classList.toggle(cls, !isEntry);
+                DOMElements.tabSalida.classList.toggle(cls, isEntry);
+            });
+            hoverClasses.forEach(cls => {
+                DOMElements.tabEntrada.classList.toggle(cls, !isEntry);
+                DOMElements.tabSalida.classList.toggle(cls, isEntry);
+            });
 
             // Actualizar botón de envío
             DOMElements.submitButton.innerHTML = `<i class="fas fa-${isEntry ? 'plus' : 'minus'} mr-2"></i> Registrar ${isEntry ? 'Entrada' : 'Salida'}`;
@@ -656,29 +506,23 @@
 
         // --- INICIALIZACIÓN PRINCIPAL ---
         
-        window.onload = async function() {
-            // 0. Inicializar Modo Oscuro antes que el resto de la UI
+        window.onload = function() {
+            // 1. Inicializar Modo Oscuro
             initializeDarkMode();
             DOMElements.darkModeToggle.addEventListener('click', toggleDarkMode);
 
-            // 1. Inicializar Firebase y Autenticar
-            await initializeFirebase();
-            
-            // 2. Sembrar la base de datos si está vacía
-            await seedDatabase();
+            // 2. Cargar/Inicializar Inventario desde LocalStorage
+            initializeInventory();
 
             // 3. Poblar los selectores de la UI
             populateSelectors();
 
-            // 4. Configurar listeners de la base de datos en tiempo real (onSnapshot)
-            setupRealtimeInventory();
-
-            // 5. Configurar listeners de la UI
+            // 4. Configurar listeners de la UI
             DOMElements.movementForm.addEventListener('submit', registerMovement);
             DOMElements.filterProvider.addEventListener('change', renderInventoryList);
             DOMElements.filterProduct.addEventListener('input', renderInventoryList);
             
-            // Se añaden los listeners para las pestañas de movimiento
+            // Listeners para las pestañas de movimiento
             DOMElements.tabEntrada.addEventListener('click', () => showMovementForm('entrada'));
             DOMElements.tabSalida.addEventListener('click', () => showMovementForm('salida'));
             
