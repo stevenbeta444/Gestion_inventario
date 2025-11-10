@@ -13,12 +13,19 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
+            transition: background-color 0.3s, color 0.3s;
         }
+        /* Definición de colores base */
+        body { background-color: #f8f9fa; }
+        .dark body { background-color: #1f2937; } /* bg-gray-800 */
+
         .card {
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: transform 0.2s;
+            transition: transform 0.2s, background-color 0.3s, color 0.3s;
         }
+        .bg-card { background-color: white; }
+        .dark .bg-card { background-color: #374151; } /* gray-700 */
+
         .btn-primary {
             background-color: #10b981; /* Emerald 500 */
             border: none;
@@ -26,7 +33,6 @@
         .btn-primary:hover {
             background-color: #059669; /* Emerald 600 */
         }
-        /* Custom scrollbar for inventory list */
         .inventory-list::-webkit-scrollbar {
             width: 8px;
         }
@@ -34,18 +40,29 @@
             background-color: #d1d5db; /* Gray 300 */
             border-radius: 4px;
         }
+        .dark .inventory-list::-webkit-scrollbar-thumb {
+            background-color: #4b5563; /* Gray 600 */
+        }
     </style>
 </head>
-<body>
+<body class="bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
 
-    <div id="app" class="min-h-screen p-4 sm:p-8 bg-gray-50">
+    <div id="app" class="min-h-screen p-4 sm:p-8">
         <!-- Header -->
-        <header class="text-center mb-8">
-            <h1 class="text-4xl sm:text-5xl font-extrabold text-green-700 tracking-tight">
+        <header class="text-center mb-8 flex flex-col sm:flex-row justify-between items-center">
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-green-700 dark:text-green-400 tracking-tight flex items-center mb-4 sm:mb-0">
                 <i class="fas fa-paw text-yellow-500 mr-2"></i> Agropiragua
             </h1>
-            <p class="text-lg text-gray-600 mt-1">Sistema de Gestión de Inventario en Tiempo Real</p>
-            <div id="auth-status" class="mt-2 text-sm text-gray-500">Cargando autenticación...</div>
+            
+            <div class="flex items-center space-x-4">
+                <!-- Toggle Modo Oscuro -->
+                <button id="dark-mode-toggle" class="p-2 rounded-full text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition duration-300 shadow-md">
+                    <i id="theme-icon" class="fas fa-sun w-5 h-5"></i>
+                </button>
+                
+                <!-- Estado de Autenticación -->
+                <div id="auth-status" class="mt-0 text-sm text-gray-500 dark:text-gray-400">Cargando autenticación...</div>
+            </div>
         </header>
 
         <!-- Main Content Grid -->
@@ -55,19 +72,17 @@
             <div class="lg:col-span-1 space-y-6">
 
                 <!-- Título y Estado -->
-                <div class="card bg-white p-6 rounded-xl">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-truck-ramp-box mr-2 text-green-600"></i> Registrar Movimiento
+                <div class="card bg-card p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+                        <i class="fas fa-truck-ramp-box mr-2 text-green-600 dark:text-green-400"></i> Registrar Movimiento
                     </h2>
 
                     <!-- Pestañas de Movimiento -->
-                    <div class="flex mb-4 border-b border-gray-200">
-                        <!-- CORRECCIÓN: Se eliminó el 'onclick' para manejar el evento con addEventListener en el módulo JS -->
-                        <button id="tab-entrada" class="flex-1 py-2 text-sm font-medium border-b-2 transition-colors duration-200 text-green-600 border-green-600">
+                    <div class="flex mb-4 border-b border-gray-200 dark:border-gray-600">
+                        <button id="tab-entrada" class="flex-1 py-2 text-sm font-medium border-b-2 transition-colors duration-200 text-green-600 border-green-600 dark:text-green-400 dark:border-green-400">
                             <i class="fas fa-plus mr-1"></i> Entrada
                         </button>
-                        <!-- CORRECCIÓN: Se eliminó el 'onclick' para manejar el evento con addEventListener en el módulo JS -->
-                        <button id="tab-salida" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-green-600 hover:border-green-300">
+                        <button id="tab-salida" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:border-green-300 dark:hover:border-green-400">
                             <i class="fas fa-minus mr-1"></i> Salida
                         </button>
                     </div>
@@ -76,23 +91,26 @@
                     <form id="movement-form" class="space-y-4">
                         <input type="hidden" id="movement-type" value="entrada">
 
-                        <div>
-                            <label for="provider-select" class="block text-sm font-medium text-gray-700">Proveedor</label>
-                            <select id="provider-select" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border">
+                        <div class="text-gray-700 dark:text-gray-300">
+                            <label for="provider-select" class="block text-sm font-medium">Proveedor</label>
+                            <select id="provider-select" required 
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border bg-white">
                                 <!-- Opciones cargadas por JS -->
                             </select>
                         </div>
 
-                        <div>
-                            <label for="product-select" class="block text-sm font-medium text-gray-700">Producto (Referencia)</label>
-                            <select id="product-select" required class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border">
+                        <div class="text-gray-700 dark:text-gray-300">
+                            <label for="product-select" class="block text-sm font-medium">Producto (Referencia)</label>
+                            <select id="product-select" required 
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border bg-white">
                                 <!-- Opciones cargadas por JS -->
                             </select>
                         </div>
 
-                        <div>
-                            <label for="quantity-input" class="block text-sm font-medium text-gray-700">Cantidad</label>
-                            <input type="number" id="quantity-input" required min="1" value="1" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border">
+                        <div class="text-gray-700 dark:text-gray-300">
+                            <label for="quantity-input" class="block text-sm font-medium">Cantidad</label>
+                            <input type="number" id="quantity-input" required min="1" value="1" 
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border bg-white">
                         </div>
 
                         <button type="submit" id="submit-button" class="w-full py-2 px-4 rounded-lg text-white font-semibold transition duration-150 btn-primary flex items-center justify-center">
@@ -105,7 +123,7 @@
                 </div>
 
                 <!-- Tarjeta de Info de Usuario -->
-                <div class="card bg-blue-100 p-4 rounded-xl text-blue-800 border border-blue-300">
+                <div class="card bg-blue-100 dark:bg-blue-900 p-4 rounded-xl text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700">
                     <h3 class="font-bold text-lg mb-1 flex items-center">
                         <i class="fas fa-user-shield mr-2"></i> ID de Sesión (Importante)
                     </h3>
@@ -116,24 +134,26 @@
 
             <!-- Columna Derecha: Inventario en Tiempo Real -->
             <div class="lg:col-span-2">
-                <div class="card bg-white p-6 rounded-xl">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
-                        <i class="fas fa-warehouse mr-2 text-teal-600"></i> Inventario General
-                        <span id="total-products" class="ml-auto text-xl font-extrabold text-teal-600">0</span>
+                <div class="card bg-card p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+                        <i class="fas fa-warehouse mr-2 text-teal-600 dark:text-teal-400"></i> Inventario General
+                        <span id="total-products" class="ml-auto text-xl font-extrabold text-teal-600 dark:text-teal-400">0</span>
                     </h2>
 
                     <!-- Filtros de Inventario -->
                     <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                        <div class="flex-1">
-                            <label for="filter-provider" class="block text-xs font-medium text-gray-500 uppercase">Filtrar por Proveedor</label>
-                            <select id="filter-provider" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-2 border text-sm">
+                        <div class="flex-1 text-gray-700 dark:text-gray-300">
+                            <label for="filter-provider" class="block text-xs font-medium uppercase">Filtrar por Proveedor</label>
+                            <select id="filter-provider" 
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-2 border text-sm bg-white">
                                 <option value="">Todos los Proveedores</option>
                                 <!-- Opciones cargadas por JS -->
                             </select>
                         </div>
-                        <div class="flex-1">
-                            <label for="filter-product" class="block text-xs font-medium text-gray-500 uppercase">Buscar Producto</label>
-                            <input type="text" id="filter-product" placeholder="Escribe para buscar..." class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-2 border text-sm">
+                        <div class="flex-1 text-gray-700 dark:text-gray-300">
+                            <label for="filter-product" class="block text-xs font-medium uppercase">Buscar Producto</label>
+                            <input type="text" id="filter-product" placeholder="Escribe para buscar..." 
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-teal-500 focus:ring-teal-500 p-2 border text-sm bg-white">
                         </div>
                     </div>
 
@@ -141,22 +161,22 @@
                     <div class="overflow-x-auto">
                         <div id="inventory-list" class="inventory-list max-h-96 overflow-y-auto">
                             <!-- Placeholder de carga -->
-                            <div id="loading-inventory" class="text-center p-8 text-gray-500">
+                            <div id="loading-inventory" class="text-center p-8 text-gray-500 dark:text-gray-400">
                                 <i class="fas fa-spinner fa-spin text-2xl"></i> Cargando inventario...
                             </div>
                             
                             <!-- Headers de la tabla (solo visible en desktop) -->
-                            <div id="table-headers" class="hidden sm:grid grid-cols-12 gap-4 py-2 px-4 text-xs font-semibold uppercase text-gray-500 bg-gray-100 rounded-t-lg sticky top-0 z-10 border-b border-gray-200">
+                            <div id="table-headers" class="hidden sm:grid grid-cols-12 gap-4 py-2 px-4 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-600 rounded-t-lg sticky top-0 z-10 border-b border-gray-200 dark:border-gray-600">
                                 <div class="col-span-4">Producto</div>
                                 <div class="col-span-2">Proveedor</div>
                                 <div class="col-span-3">Presentación</div>
                                 <div class="col-span-3 text-right">Stock Actual</div>
                             </div>
                             
-                            <div id="inventory-items" class="divide-y divide-gray-200">
+                            <div id="inventory-items" class="divide-y divide-gray-200 dark:divide-gray-600">
                                 <!-- Los ítems del inventario se insertarán aquí por JS -->
                             </div>
-                            <div id="no-results" class="hidden text-center p-8 text-gray-500">
+                            <div id="no-results" class="hidden text-center p-8 text-gray-500 dark:text-gray-400">
                                 No se encontraron productos con estos filtros.
                             </div>
                         </div>
@@ -171,7 +191,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, collection, query, setDoc, runTransaction, getDocs, where, limit, updateDoc, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, collection, query, runTransaction, getDocs, limit, writeBatch } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // Configuración de Firebase (variables globales proporcionadas por el entorno)
@@ -206,6 +226,9 @@
 
         // --- REFERENCIAS DE DOM ---
         const DOMElements = {
+            html: document.documentElement,
+            darkModeToggle: document.getElementById('dark-mode-toggle'),
+            themeIcon: document.getElementById('theme-icon'),
             authStatus: document.getElementById('auth-status'),
             userIdDisplay: document.getElementById('user-id-display'),
             providerSelect: document.getElementById('provider-select'),
@@ -228,6 +251,40 @@
 
         let currentInventory = [];
         let isAuthReady = false;
+
+        // --- GESTIÓN DEL MODO OSCURO ---
+
+        /**
+         * Inicializa el modo oscuro basándose en localStorage o la preferencia del sistema.
+         */
+        function initializeDarkMode() {
+            const isDark = localStorage.getItem('darkMode') === 'true';
+            
+            if (isDark) {
+                DOMElements.html.classList.add('dark');
+                DOMElements.themeIcon.classList.replace('fa-sun', 'fa-moon');
+            } else {
+                DOMElements.html.classList.remove('dark');
+                DOMElements.themeIcon.classList.replace('fa-moon', 'fa-sun');
+            }
+        }
+
+        /**
+         * Alterna el modo oscuro y guarda la preferencia.
+         */
+        function toggleDarkMode() {
+            const isCurrentlyDark = DOMElements.html.classList.contains('dark');
+            
+            if (isCurrentlyDark) {
+                DOMElements.html.classList.remove('dark');
+                DOMElements.themeIcon.classList.replace('fa-moon', 'fa-sun');
+                localStorage.setItem('darkMode', 'false');
+            } else {
+                DOMElements.html.classList.add('dark');
+                DOMElements.themeIcon.classList.replace('fa-sun', 'fa-moon');
+                localStorage.setItem('darkMode', 'true');
+            }
+        }
 
         // --- FUNCIONES DE UTILIDAD ---
 
@@ -258,7 +315,7 @@
                 auth = getAuth(app);
 
                 // Habilitar logs para depuración de Firestore
-                setLogLevel('error'); // Usamos 'error' para no saturar la consola, pero podemos cambiar a 'debug' si es necesario.
+                setLogLevel('error');
 
                 // 1. Manejar autenticación
                 DOMElements.authStatus.textContent = 'Autenticando...';
@@ -275,7 +332,7 @@
                     const unsubscribe = onAuthStateChanged(auth, (user) => {
                         if (user) {
                             userId = user.uid;
-                            DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-green-500 text-xs mr-1"></i> Sesión activa`;
+                            DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-green-500 dark:text-green-400 text-xs mr-1"></i> Sesión activa`;
                             DOMElements.userIdDisplay.textContent = userId;
                             isAuthReady = true;
                             unsubscribe();
@@ -283,7 +340,7 @@
                         } else {
                             // Esto solo debería ocurrir si signInAnonymously falla
                             DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-red-500 text-xs mr-1"></i> Error de sesión`;
-                            userId = crypto.randomUUID(); // Fallback para userId si la autenticación falla por completo (poco probable)
+                            userId = crypto.randomUUID(); // Fallback
                             DOMElements.userIdDisplay.textContent = `ANÓNIMO FALLBACK: ${userId}`;
                             isAuthReady = true;
                             unsubscribe();
@@ -293,8 +350,8 @@
                 });
             } catch (error) {
                 console.error("Error al inicializar Firebase o autenticar:", error);
-                DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-red-500 text-xs mr-1"></i> Error fatal: ${error.code}`;
-                isAuthReady = true; // Permite que las demás funciones sigan si es posible
+                DOMElements.authStatus.innerHTML = `<i class="fas fa-circle text-red-500 text-xs mr-1"></i> Error fatal`;
+                isAuthReady = true;
             }
         }
         
@@ -307,7 +364,7 @@
             const collectionRef = getInventoryCollectionRef();
 
             try {
-                const q = query(collectionRef, limit(1)); // Intenta obtener solo 1 documento para chequear si hay datos
+                const q = query(collectionRef, limit(1));
                 const snapshot = await withExponentialBackoff(() => getDocs(q));
 
                 if (snapshot.empty) {
@@ -411,7 +468,7 @@
             const isEntry = movementType === 'entrada';
 
             try {
-                // Ejecutar Transacción
+                // Ejecutar Transacción para asegurar la atomicidad del stock
                 await runTransaction(db, async (transaction) => {
                     const docSnapshot = await transaction.get(docRef);
                     const currentStock = docSnapshot.exists() ? docSnapshot.data().stock : 0;
@@ -422,7 +479,6 @@
                     } else {
                         // Salida
                         if (currentStock < quantity) {
-                            // Lanzar error para abortar la transacción y capturarlo afuera
                             throw new Error(`INSUFFICIENT_STOCK: Solo hay ${currentStock} unidades de ${productId} en stock.`);
                         }
                         newStock = currentStock - quantity;
@@ -434,13 +490,7 @@
                         lastUpdated: new Date().toISOString(),
                         lastMovementType: movementType,
                         lastMovementQty: quantity,
-                        // El resto de los datos del producto (name, provider, presentation) se mantienen del seed.
                     });
-
-                    // Opcional: Registrar el movimiento en una colección de historial (omito para simplicidad, pero se haría aquí)
-                    
-                    return { newStock };
-
                 });
 
                 // Transacción exitosa
@@ -458,8 +508,9 @@
 
             } finally {
                 // Volver a habilitar el botón
+                const isEntryFinal = DOMElements.movementTypeInput.value === 'entrada';
                 DOMElements.submitButton.disabled = false;
-                DOMElements.submitButton.innerHTML = `<i class="fas fa-check mr-2"></i> Registrar ${isEntry ? 'Entrada' : 'Salida'}`;
+                DOMElements.submitButton.innerHTML = `<i class="fas fa-check mr-2"></i> Registrar ${isEntryFinal ? 'Entrada' : 'Salida'}`;
             }
         }
 
@@ -488,7 +539,7 @@
                 renderInventoryList();
             }, (error) => {
                 console.error("Error al escuchar el inventario en tiempo real:", error);
-                DOMElements.inventoryItems.innerHTML = `<div class="p-4 text-red-600">Error al cargar datos: ${error.message}</div>`;
+                DOMElements.inventoryItems.innerHTML = `<div class="p-4 text-red-600 dark:text-red-400">Error al cargar datos: ${error.message}</div>`;
             });
         }
         
@@ -517,29 +568,31 @@
             if (!hasResults) return;
 
             filteredInventory.forEach(item => {
-                const stockColor = item.stock <= 5 && item.stock > 0 ? 'text-orange-500 font-bold' : (item.stock === 0 ? 'text-red-600 font-bold' : 'text-gray-900');
+                const stockColorClass = item.stock <= 5 && item.stock > 0 
+                    ? 'text-orange-500 font-bold' 
+                    : (item.stock === 0 ? 'text-red-600 font-bold' : 'text-gray-900 dark:text-gray-100');
                 
                 const itemHtml = `
-                    <div class="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-gray-50 transition-colors duration-150 rounded-lg sm:rounded-none">
+                    <div class="grid grid-cols-12 gap-4 py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-150 rounded-lg sm:rounded-none">
                         <!-- Producto (Visible en Móvil y Desktop) -->
                         <div class="col-span-12 sm:col-span-4 flex flex-col">
-                            <span class="font-medium text-gray-800">${item.name}</span>
-                            <span class="text-xs text-gray-400">Ref: ${item.id}</span>
+                            <span class="font-medium text-gray-800 dark:text-gray-200">${item.name}</span>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">Ref: ${item.id}</span>
                         </div>
 
                         <!-- Proveedor (Visible en Móvil y Desktop) -->
-                        <div class="col-span-6 sm:col-span-2 text-sm text-gray-600 sm:self-center">
-                            <span class="sm:hidden font-semibold text-gray-500 mr-2">Proveedor: </span>${item.provider}
+                        <div class="col-span-6 sm:col-span-2 text-sm text-gray-600 dark:text-gray-400 sm:self-center">
+                            <span class="sm:hidden font-semibold text-gray-500 dark:text-gray-500 mr-2">Proveedor: </span>${item.provider}
                         </div>
                         
                         <!-- Presentación (Visible en Móvil y Desktop) -->
-                        <div class="col-span-6 sm:col-span-3 text-sm text-gray-600 sm:self-center">
-                            <span class="sm:hidden font-semibold text-gray-500 mr-2">Presentación: </span>${item.presentation}
+                        <div class="col-span-6 sm:col-span-3 text-sm text-gray-600 dark:text-gray-400 sm:self-center">
+                            <span class="sm:hidden font-semibold text-gray-500 dark:text-gray-500 mr-2">Presentación: </span>${item.presentation}
                         </div>
 
                         <!-- Stock Actual (Visible en Móvil y Desktop) -->
-                        <div class="col-span-12 sm:col-span-3 text-right text-lg sm:text-base font-extrabold ${stockColor} mt-2 sm:mt-0 sm:self-center">
-                            <span class="sm:hidden font-semibold text-gray-500 mr-2">Stock: </span>${item.stock} unidades
+                        <div class="col-span-12 sm:col-span-3 text-right text-lg sm:text-base font-extrabold ${stockColorClass} mt-2 sm:mt-0 sm:self-center">
+                            <span class="sm:hidden font-semibold text-gray-500 dark:text-gray-500 mr-2">Stock: </span>${item.stock} unidades
                         </div>
                     </div>
                 `;
@@ -551,12 +604,12 @@
 
         function showMessage(text, type) {
             DOMElements.messageBox.textContent = text;
-            DOMElements.messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800');
+            DOMElements.messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'dark:bg-red-900', 'dark:text-red-200', 'dark:bg-green-900', 'dark:text-green-200');
             
             if (type === 'error') {
-                DOMElements.messageBox.classList.add('bg-red-100', 'text-red-800');
+                DOMElements.messageBox.classList.add('bg-red-100', 'text-red-800', 'dark:bg-red-900', 'dark:text-red-200');
             } else if (type === 'success') {
-                DOMElements.messageBox.classList.add('bg-green-100', 'text-green-800');
+                DOMElements.messageBox.classList.add('bg-green-100', 'text-green-800', 'dark:bg-green-900', 'dark:text-green-200');
             }
             
             // Ocultar después de 5 segundos
@@ -573,21 +626,29 @@
 
             // Actualizar pestañas
             DOMElements.tabEntrada.classList.toggle('border-green-600', isEntry);
+            DOMElements.tabEntrada.classList.toggle('dark:border-green-400', isEntry);
             DOMElements.tabEntrada.classList.toggle('border-transparent', !isEntry);
             DOMElements.tabEntrada.classList.toggle('text-green-600', isEntry);
+            DOMElements.tabEntrada.classList.toggle('dark:text-green-400', isEntry);
             DOMElements.tabEntrada.classList.toggle('text-gray-500', !isEntry);
+            DOMElements.tabEntrada.classList.toggle('dark:text-gray-400', !isEntry);
             DOMElements.tabEntrada.classList.toggle('hover:border-green-300', !isEntry);
-            
+            DOMElements.tabEntrada.classList.toggle('dark:hover:border-green-400', !isEntry);
+
             DOMElements.tabSalida.classList.toggle('border-green-600', !isEntry);
+            DOMElements.tabSalida.classList.toggle('dark:border-green-400', !isEntry);
             DOMElements.tabSalida.classList.toggle('border-transparent', isEntry);
             DOMElements.tabSalida.classList.toggle('text-green-600', !isEntry);
+            DOMElements.tabSalida.classList.toggle('dark:text-green-400', !isEntry);
             DOMElements.tabSalida.classList.toggle('text-gray-500', isEntry);
+            DOMElements.tabSalida.classList.toggle('dark:text-gray-400', isEntry);
             DOMElements.tabSalida.classList.toggle('hover:border-green-300', isEntry);
+            DOMElements.tabSalida.classList.toggle('dark:hover:border-green-400', isEntry);
 
             // Actualizar botón de envío
             DOMElements.submitButton.innerHTML = `<i class="fas fa-${isEntry ? 'plus' : 'minus'} mr-2"></i> Registrar ${isEntry ? 'Entrada' : 'Salida'}`;
             DOMElements.submitButton.classList.toggle('btn-primary', isEntry);
-            DOMElements.submitButton.classList.toggle('bg-red-500', !isEntry);
+            DOMElements.submitButton.classList.toggle('bg-red-600', !isEntry);
             DOMElements.submitButton.classList.toggle('hover:bg-red-700', !isEntry);
             DOMElements.submitButton.classList.toggle('bg-green-600', isEntry);
             DOMElements.submitButton.classList.toggle('hover:bg-green-700', isEntry);
@@ -596,6 +657,10 @@
         // --- INICIALIZACIÓN PRINCIPAL ---
         
         window.onload = async function() {
+            // 0. Inicializar Modo Oscuro antes que el resto de la UI
+            initializeDarkMode();
+            DOMElements.darkModeToggle.addEventListener('click', toggleDarkMode);
+
             // 1. Inicializar Firebase y Autenticar
             await initializeFirebase();
             
@@ -613,7 +678,7 @@
             DOMElements.filterProvider.addEventListener('change', renderInventoryList);
             DOMElements.filterProduct.addEventListener('input', renderInventoryList);
             
-            // CORRECCIÓN: Se añaden los listeners para las pestañas de movimiento
+            // Se añaden los listeners para las pestañas de movimiento
             DOMElements.tabEntrada.addEventListener('click', () => showMovementForm('entrada'));
             DOMElements.tabSalida.addEventListener('click', () => showMovementForm('salida'));
             
