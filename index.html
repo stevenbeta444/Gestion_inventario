@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario Agropiragua (Local)</title>
+    <title>Inventario Agropiragua (Local) con Reportes</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Inter Font -->
@@ -65,10 +65,10 @@
         <!-- Main Content Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            <!-- Columna Izquierda: Movimientos (Entrada/Salida) -->
+            <!-- Columna Izquierda: Movimientos (Entrada/Salida) y Reportes -->
             <div class="lg:col-span-1 space-y-6">
 
-                <!-- Título y Estado -->
+                <!-- 1. Movimiento Form -->
                 <div class="card bg-card p-6 rounded-xl">
                     <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
                         <i class="fas fa-truck-ramp-box mr-2 text-green-600 dark:text-green-400"></i> Registrar Movimiento
@@ -76,7 +76,7 @@
 
                     <!-- Pestañas de Movimiento -->
                     <div class="flex mb-4 border-b border-gray-200 dark:border-gray-600">
-                        <button id="tab-entrada" class="flex-1 py-2 text-sm font-medium border-b-2 transition-colors duration-200 text-green-600 border-green-600 dark:text-green-400 dark:border-green-400">
+                        <button id="tab-entrada" class="flex-1 py-2 text-sm font-medium border-b-2 transition-colors duration-200">
                             <i class="fas fa-plus mr-1"></i> Entrada
                         </button>
                         <button id="tab-salida" class="flex-1 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 hover:border-green-300 dark:hover:border-green-400">
@@ -118,6 +118,36 @@
                     <!-- Mensaje de estado -->
                     <div id="message-box" class="mt-4 p-3 rounded-lg text-sm hidden"></div>
                 </div>
+
+                <!-- 2. Sección de Reportes/Exportación (NUEVA) -->
+                <div class="card bg-card p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mb-4 flex items-center">
+                        <i class="fas fa-file-export mr-2 text-indigo-600 dark:text-indigo-400"></i> Reportes y Exportación
+                    </h2>
+
+                    <form id="export-form" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="text-gray-700 dark:text-gray-300">
+                                <label for="start-date" class="block text-sm font-medium">Fecha de Inicio</label>
+                                <input type="date" id="start-date" required
+                                    class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border bg-white">
+                            </div>
+                            <div class="text-gray-700 dark:text-gray-300">
+                                <label for="end-date" class="block text-sm font-medium">Fecha de Fin</label>
+                                <input type="date" id="end-date" required
+                                    class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 p-2 border bg-white">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="export-button" class="w-full py-2 px-4 rounded-lg text-white font-semibold transition duration-150 bg-indigo-600 hover:bg-indigo-700 flex items-center justify-center">
+                            <i class="fas fa-download mr-2"></i> Exportar a CSV (Rango de Fecha)
+                        </button>
+                    </form>
+
+                    <!-- Mensaje de estado de exportación -->
+                    <div id="export-message" class="mt-4 p-3 rounded-lg text-sm hidden"></div>
+                </div>
+
             </div>
 
             <!-- Columna Derecha: Inventario en Tiempo Real -->
@@ -171,8 +201,9 @@
     </div>
 
     <script>
-        // --- CONSTANTES ---
-        const LOCAL_STORAGE_KEY = 'agropiragua_inventory_local';
+        // --- CONSTANTES DE LOCAL STORAGE ---
+        const INVENTORY_KEY = 'agropiragua_inventory_local';
+        const MOVEMENTS_KEY = 'agropiragua_movements_local'; // NUEVA CLAVE PARA HISTORIAL
         
         // --- DATA INICIAL (Estructura de Productos) ---
         const PRODUCTS_DATA = [
@@ -216,15 +247,77 @@
             tabSalida: document.getElementById('tab-salida'),
             totalProducts: document.getElementById('total-products'),
             tableHeaders: document.getElementById('table-headers'),
+            // Nuevos elementos para exportación
+            exportForm: document.getElementById('export-form'),
+            startDateInput: document.getElementById('start-date'),
+            endDateInput: document.getElementById('end-date'),
+            exportMessage: document.getElementById('export-message'),
         };
 
         let currentInventory = [];
+        let movementHistory = []; // NUEVO: Historial de movimientos
 
-        // --- GESTIÓN DEL MODO OSCURO ---
+        // --- GESTIÓN DE LOCAL STORAGE (Base de Datos Local) ---
 
         /**
-         * Inicializa el modo oscuro basándose en localStorage.
+         * Carga el inventario y el historial desde localStorage.
          */
+        function initializeData() {
+            // Inicializar Inventario
+            const storedInventory = localStorage.getItem(INVENTORY_KEY);
+            if (storedInventory) {
+                try {
+                    currentInventory = JSON.parse(storedInventory);
+                } catch (e) {
+                    console.error("Error al parsear el inventario. Reestableciendo.", e);
+                    currentInventory = [...PRODUCTS_DATA];
+                    saveInventory();
+                }
+            } else {
+                currentInventory = [...PRODUCTS_DATA];
+                saveInventory();
+            }
+
+            // Inicializar Historial de Movimientos
+            const storedMovements = localStorage.getItem(MOVEMENTS_KEY);
+            if (storedMovements) {
+                try {
+                    movementHistory = JSON.parse(storedMovements);
+                } catch (e) {
+                    console.error("Error al parsear el historial de movimientos. Reestableciendo.", e);
+                    movementHistory = [];
+                    saveMovements();
+                }
+            } else {
+                movementHistory = [];
+            }
+        }
+
+        /**
+         * Guarda el inventario actual.
+         */
+        function saveInventory() {
+            try {
+                localStorage.setItem(INVENTORY_KEY, JSON.stringify(currentInventory));
+            } catch (e) {
+                console.error("Error al guardar el inventario.", e);
+                showMessage('Error crítico: No se pudo guardar el inventario localmente.', 'error');
+            }
+        }
+
+        /**
+         * Guarda el historial de movimientos.
+         */
+        function saveMovements() {
+            try {
+                localStorage.setItem(MOVEMENTS_KEY, JSON.stringify(movementHistory));
+            } catch (e) {
+                console.error("Error al guardar el historial de movimientos.", e);
+                showMessage('Error crítico: No se pudo guardar el historial de movimientos localmente.', 'error');
+            }
+        }
+
+        // --- GESTIÓN DEL MODO OSCURO (Mantenido) ---
         function initializeDarkMode() {
             const isDark = localStorage.getItem('darkMode') === 'true';
             if (isDark) {
@@ -236,9 +329,6 @@
             }
         }
 
-        /**
-         * Alterna el modo oscuro y guarda la preferencia.
-         */
         function toggleDarkMode() {
             const isCurrentlyDark = DOMElements.html.classList.contains('dark');
             if (isCurrentlyDark) {
@@ -252,49 +342,10 @@
             }
         }
 
-        // --- GESTIÓN DE LOCAL STORAGE (NUEVA BASE DE DATOS) ---
-
-        /**
-         * Carga el inventario desde localStorage o lo inicializa si no existe.
-         */
-        function initializeInventory() {
-            const storedData = localStorage.getItem(LOCAL_STORAGE_KEY);
-            if (storedData) {
-                try {
-                    currentInventory = JSON.parse(storedData);
-                } catch (e) {
-                    console.error("Error al parsear el inventario de localStorage. Reestableciendo.", e);
-                    currentInventory = [...PRODUCTS_DATA];
-                    saveInventory();
-                }
-            } else {
-                // Inicializar con los datos por defecto
-                currentInventory = [...PRODUCTS_DATA];
-                saveInventory();
-            }
-            // Asegurar que siempre se muestre la lista inicial
-            renderInventoryList();
-        }
-
-        /**
-         * Guarda el inventario actual en localStorage.
-         */
-        function saveInventory() {
-            try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(currentInventory));
-            } catch (e) {
-                console.error("Error al guardar en localStorage.", e);
-                showMessage('Error crítico: No se pudo guardar el inventario localmente. Tu navegador puede estar lleno.', 'error');
-            }
-        }
-
-        // --- GESTIÓN DE PRODUCTOS Y UI ---
-
-        // Función para poblar los <select> del formulario y filtros
+        // --- GESTIÓN DE SELECTORES (Mantenido) ---
         function populateSelectors() {
             const providers = [...new Set(PRODUCTS_DATA.map(p => p.provider))].sort();
 
-            // Poblar Selectores de Proveedor (Formulario y Filtro)
             const populate = (selectElement) => {
                 selectElement.innerHTML = selectElement === DOMElements.filterProvider ? '<option value="">Todos los Proveedores</option>' : '';
                 providers.forEach(provider => {
@@ -308,18 +359,15 @@
             populate(DOMElements.providerSelect);
             populate(DOMElements.filterProvider);
             
-            // Poblar Selector de Productos inicial
             if (providers.length > 0) {
                 updateProductSelector(providers[0]);
             }
             
-            // Set listeners for dynamic product list
             DOMElements.providerSelect.addEventListener('change', (e) => {
                 updateProductSelector(e.target.value);
             });
         }
 
-        // Actualizar el selector de productos basado en el proveedor seleccionado
         function updateProductSelector(selectedProvider) {
             const filteredProducts = PRODUCTS_DATA.filter(p => p.provider === selectedProvider);
             DOMElements.productSelect.innerHTML = '';
@@ -341,11 +389,7 @@
             });
         }
 
-        // --- GESTIÓN DE MOVIMIENTOS ---
-
-        /**
-         * Función principal para registrar la Entrada o Salida, actualizando el inventario localmente.
-         */
+        // --- GESTIÓN DE MOVIMIENTOS (Actualizada para registrar historial) ---
         function registerMovement(e) {
             e.preventDefault();
             
@@ -367,11 +411,10 @@
             const isEntry = movementType === 'entrada';
             let newStock;
 
-            // Lógica de movimiento
+            // 1. Lógica de Stock
             if (isEntry) {
                 newStock = currentInventory[itemIndex].stock + quantity;
             } else {
-                // Salida
                 if (currentInventory[itemIndex].stock < quantity) {
                     showMessage(`Error de Stock: Solo hay ${currentInventory[itemIndex].stock} unidades de ${productId} en stock.`, 'error');
                     return;
@@ -379,25 +422,37 @@
                 newStock = currentInventory[itemIndex].stock - quantity;
             }
 
-            // Actualizar inventario en memoria
+            // 2. Registrar en Historial de Movimientos
+            const productDetails = PRODUCTS_DATA.find(p => p.id === productId);
+            const movementRecord = {
+                date: new Date().toISOString(), // Fecha y hora ISO para fácil filtrado
+                type: movementType,
+                quantity: quantity,
+                productId: productId,
+                productName: productDetails.name,
+                provider: productDetails.provider,
+                presentation: productDetails.presentation,
+                newStock: newStock,
+            };
+            movementHistory.push(movementRecord);
+            saveMovements(); // Guardar historial
+
+            // 3. Actualizar Inventario y Guardar
             currentInventory[itemIndex].stock = newStock;
-            
-            // Guardar en LocalStorage y renderizar
             saveInventory();
             renderInventoryList();
 
-            // Mensaje de éxito
+            // 4. Mensaje de éxito
             showMessage(`¡${isEntry ? 'Entrada' : 'Salida'} de ${quantity} registrada con éxito!`, 'success');
             DOMElements.quantityInput.value = '1';
         }
         
-        // --- RENDERIZADO DE INVENTARIO Y FILTROS ---
+        // --- RENDERIZADO DE INVENTARIO (Mantenido) ---
 
         function renderInventoryList() {
             const filterProvider = DOMElements.filterProvider.value;
             const filterText = DOMElements.filterProduct.value.toLowerCase();
             
-            // Aplicar filtros
             const filteredInventory = currentInventory.filter(item => {
                 const providerMatch = !filterProvider || item.provider === filterProvider;
                 const textMatch = !filterText || item.name.toLowerCase().includes(filterText) || item.id.toLowerCase().includes(filterText);
@@ -409,7 +464,6 @@
             DOMElements.inventoryItems.innerHTML = '';
             DOMElements.totalProducts.textContent = filteredInventory.length;
             
-            // Asegurarse de que los encabezados de la tabla solo se muestren si hay resultados
             const hasResults = filteredInventory.length > 0;
             DOMElements.noResults.classList.toggle('hidden', hasResults);
             DOMElements.tableHeaders.classList.toggle('hidden', !hasResults);
@@ -450,31 +504,30 @@
             });
         }
         
-        // --- GESTIÓN DE UI / ESTADO ---
+        // --- GESTIÓN DE UI / ESTADO (Mantenido) ---
 
-        function showMessage(text, type) {
-            DOMElements.messageBox.textContent = text;
-            DOMElements.messageBox.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'dark:bg-red-900', 'dark:text-red-200', 'dark:bg-green-900', 'dark:text-green-200');
+        function showMessage(text, type, target = DOMElements.messageBox) {
+            target.textContent = text;
+            target.classList.remove('hidden', 'bg-red-100', 'text-red-800', 'bg-green-100', 'text-green-800', 'dark:bg-red-900', 'dark:text-red-200', 'dark:bg-green-900', 'dark:text-green-200');
             
             if (type === 'error') {
-                DOMElements.messageBox.classList.add('bg-red-100', 'text-red-800', 'dark:bg-red-900', 'dark:text-red-200');
+                target.classList.add('bg-red-100', 'text-red-800', 'dark:bg-red-900', 'dark:text-red-200');
             } else if (type === 'success') {
-                DOMElements.messageBox.classList.add('bg-green-100', 'text-green-800', 'dark:bg-green-900', 'dark:text-green-200');
+                target.classList.add('bg-green-100', 'text-green-800', 'dark:bg-green-900', 'dark:text-green-200');
+            } else if (type === 'info') {
+                target.classList.add('bg-blue-100', 'text-blue-800', 'dark:bg-blue-900', 'dark:text-blue-200');
             }
             
-            // Ocultar después de 5 segundos
             setTimeout(() => {
-                DOMElements.messageBox.classList.add('hidden');
+                target.classList.add('hidden');
             }, 5000);
         }
 
         function showMovementForm(type) {
             const isEntry = type === 'entrada';
             
-            // Actualizar estado interno
             DOMElements.movementTypeInput.value = type;
 
-            // Actualizar pestañas (clase activa/inactiva)
             const activeClasses = ['border-green-600', 'dark:border-green-400', 'text-green-600', 'dark:text-green-400'];
             const inactiveClasses = ['border-transparent', 'text-gray-500', 'dark:text-gray-400'];
             const hoverClasses = ['hover:border-green-300', 'dark:hover:border-green-400', 'hover:text-green-600', 'dark:hover:text-green-400'];
@@ -504,6 +557,113 @@
             DOMElements.submitButton.classList.toggle('hover:bg-green-700', isEntry);
         }
 
+        // --- EXPORTACIÓN A CSV (NUEVA FUNCIÓN) ---
+        
+        /**
+         * Maneja el formulario de exportación y genera el archivo CSV.
+         */
+        function handleExport(e) {
+            e.preventDefault();
+
+            const startDate = DOMElements.startDateInput.value;
+            const endDate = DOMElements.endDateInput.value;
+            
+            if (!startDate || !endDate) {
+                showMessage('Debes seleccionar una Fecha de Inicio y una Fecha de Fin.', 'error', DOMElements.exportMessage);
+                return;
+            }
+
+            // Convertir fechas a objetos Date para comparación (se añade el final del día a endDate)
+            const startTimestamp = new Date(startDate).getTime();
+            const endTimestamp = new Date(endDate + 'T23:59:59').getTime(); // Asegura incluir todo el día final
+
+            if (startTimestamp > endTimestamp) {
+                showMessage('La fecha de inicio no puede ser posterior a la fecha de fin.', 'error', DOMElements.exportMessage);
+                return;
+            }
+
+            // 1. Filtrar Movimientos
+            const filteredMovements = movementHistory.filter(record => {
+                const recordTimestamp = new Date(record.date).getTime();
+                return recordTimestamp >= startTimestamp && recordTimestamp <= endTimestamp;
+            });
+
+            if (filteredMovements.length === 0) {
+                showMessage('No se encontraron movimientos en el rango de fechas seleccionado.', 'info', DOMElements.exportMessage);
+                return;
+            }
+
+            // 2. Preparar el contenido CSV
+            const csvContent = convertToCSV(filteredMovements);
+
+            // 3. Crear y descargar el archivo
+            const today = new Date().toISOString().slice(0, 10);
+            const filename = `Reporte_Movimientos_Agropiragua_${startDate}_a_${endDate}_${today}.csv`;
+            downloadCSV(csvContent, filename);
+
+            showMessage(`Exportados ${filteredMovements.length} movimientos al archivo "${filename}".`, 'success', DOMElements.exportMessage);
+        }
+
+        /**
+         * Convierte un array de objetos a una cadena de texto en formato CSV.
+         */
+        function convertToCSV(data) {
+            // Cabeceras en español
+            const headers = [
+                "FECHA_HORA", 
+                "TIPO_MOVIMIENTO", 
+                "CANTIDAD", 
+                "PRODUCTO_ID", 
+                "PRODUCTO_NOMBRE", 
+                "PROVEEDOR", 
+                "PRESENTACION", 
+                "STOCK_RESULTANTE"
+            ];
+            
+            // Mapeo de claves a usar
+            const keys = ["date", "type", "quantity", "productId", "productName", "provider", "presentation", "newStock"];
+
+            let csv = headers.join(";") + "\n"; // Usamos punto y coma (;) como separador para compatibilidad con Excel en muchos países
+
+            data.forEach(item => {
+                const row = keys.map(key => {
+                    let value = item[key];
+                    if (key === 'date') {
+                        // Formatear la fecha/hora para mejor legibilidad
+                        value = new Date(value).toLocaleString('es-CO');
+                    } else if (typeof value === 'string') {
+                        // Escapar comillas dobles y asegurarse de que no haya saltos de línea
+                        value = `"${value.replace(/"/g, '""')}"`;
+                    }
+                    return value;
+                }).join(";");
+                csv += row + "\n";
+            });
+
+            return csv;
+        }
+
+        /**
+         * Crea un blob de datos CSV y dispara la descarga.
+         */
+        function downloadCSV(csvContent, filename) {
+            // El '\ufeff' es el BOM (Byte Order Mark) que le dice a Excel que el archivo está en UTF-8
+            const blob = new Blob(['\ufeff', csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            
+            // Compatibilidad de navegadores
+            if (link.download !== undefined) { 
+                const url = URL.createObjectURL(blob);
+                link.setAttribute("href", url);
+                link.setAttribute("download", filename);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+        }
+
         // --- INICIALIZACIÓN PRINCIPAL ---
         
         window.onload = function() {
@@ -511,8 +671,8 @@
             initializeDarkMode();
             DOMElements.darkModeToggle.addEventListener('click', toggleDarkMode);
 
-            // 2. Cargar/Inicializar Inventario desde LocalStorage
-            initializeInventory();
+            // 2. Cargar/Inicializar Inventario y Movimientos desde LocalStorage
+            initializeData();
 
             // 3. Poblar los selectores de la UI
             populateSelectors();
@@ -521,13 +681,25 @@
             DOMElements.movementForm.addEventListener('submit', registerMovement);
             DOMElements.filterProvider.addEventListener('change', renderInventoryList);
             DOMElements.filterProduct.addEventListener('input', renderInventoryList);
+            DOMElements.exportForm.addEventListener('submit', handleExport); // NUEVO: Listener para Exportar
             
             // Listeners para las pestañas de movimiento
             DOMElements.tabEntrada.addEventListener('click', () => showMovementForm('entrada'));
             DOMElements.tabSalida.addEventListener('click', () => showMovementForm('salida'));
             
-            // Inicializar estado de las pestañas
+            // 5. Inicializar estado y renderizado
             showMovementForm('entrada');
+            renderInventoryList();
+            
+            // Establecer fechas por defecto para el reporte (últimos 30 días)
+            const today = new Date();
+            const lastMonth = new Date();
+            lastMonth.setDate(today.getDate() - 30);
+
+            const formatDate = (date) => date.toISOString().slice(0, 10);
+            
+            DOMElements.startDateInput.value = formatDate(lastMonth);
+            DOMElements.endDateInput.value = formatDate(today);
         };
 
     </script>
